@@ -50,6 +50,7 @@ def sync(app, destination):
     copy('tools/verify.py', 'vendor/inhouse-services-updater/verify.py')
     copy('tools/catalog.py', 'vendor/inhouse-services-updater/catalog.py')
     copy('tools/register_android.py', 'vendor/inhouse-services-updater/register_android.py')
+    copy('tests/browser.py', 'vendor/inhouse-services-updater/tests/browser.py')
     for document in ('AGENTS.md', 'README.md', 'docs/PROTOCOL.md', 'docs/PROVENANCE.md'):
         copy(document, 'vendor/inhouse-services-updater/' + document)
     if app in ('youtube', 'instagram', 'photos'):
