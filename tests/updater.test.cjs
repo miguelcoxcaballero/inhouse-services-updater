@@ -32,6 +32,13 @@ test('closing an embedded menu prevents a pending manual result from opening a p
  assert.equal(await pending,false);assert.equal(f.dom.window.document.querySelector('#inhouse-services-update'),null);f.dom.window.close();
 });
 
+test('manual checks joining startup checks still report the empty channel',async()=>{
+ let unblock;const gate=new Promise(resolve=>unblock=resolve);
+ const f=fixture({defaultB:true,fetch:async url=>{await gate;return {ok:true,json:async()=>url.includes('api.github.com')?{content:Buffer.from(JSON.stringify(cat('B',[]))).toString('base64')}:cat('B',[])}}});
+ const startup=f.app.check();f.app.settings();const manual=f.app.check({manual:true});unblock();
+ assert.equal(await startup,false);assert.equal(await manual,false);assert.match(f.dom.window.document.body.textContent,/No releases on version B/);f.dom.window.close();
+});
+
 test('catalog validation binds channel, hash, history and repository',()=>{
  assert.equal(U.validateCatalog(cat(),'A',{repository:repo}).latest.version,'0.1.6');
  for(const mutate of [v=>v.channel='B',v=>v.latest={...v.latest,apkUrl:'https://evil.example/app.apk'},v=>v.latest={...v.latest,apkSha256:'x'},v=>v.latest={...v.latest,changelog:'x'.repeat(121)},v=>v.releases.push(v.latest)]){
