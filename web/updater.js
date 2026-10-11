@@ -208,6 +208,7 @@
       if (!snoozed() && newer(valid.latest, installed(), installedCode())) { win.handleInhouseUpdateResult = result; show(valid); return true; }
       return false;
     }
+    win.handleInhouseUpdateResult = result;
     return { start, stop, check, settings, close, result, offerPending, getState: readState, version: VERSION };
   }
   const api = { create, compareVersions, validateCatalog, newer, TWO_WEEKS, VERSION };
