@@ -2,6 +2,7 @@ const {test}=require('node:test');const assert=require('node:assert/strict');con
 const U=require('../web/updater.js');
 const repo='miguelcoxcaballero/youtube-calma';
 const release=(version='0.1.6',code=16,note='Canales A/B y recordatorio.')=>({version,versionCode:code,apkUrl:`https://github.com/${repo}/releases/download/v${version}/app.apk`,apkSha256:'a'.repeat(64),apkSizeBytes:2000,changelog:note});
+const releasePage=(version='0.1.6')=>`https://github.com/${repo}/releases/tag/v${version}`;
 const cat=(channel='A',rows=[release()])=>({schemaVersion:1,channel,latest:rows[0]||null,releases:rows});
 function fixture(extra={}) {
  const dom=new JSDOM('<!doctype html><button id="before">Settings</button>',{url:'https://appassets.androidplatform.net/updates/'});let clock=100000,requests=[],installs=[];
@@ -113,15 +114,15 @@ test('opening Android is not installation success and never leaves a disabled re
  f.button('Try again').click();assert.equal(f.installs.length,2);f.dom.window.close();
 });
 
-test('legacy Android offers a normal validated APK link immediately and after ready without claiming failure',async()=>{
+test('legacy Android offers the specific GitHub release immediately and after ready without claiming failure',async()=>{
  for(const state of ['ready','installing']) {
   const f=fixture(),doc=f.dom.window.document;await f.app.check();
   const recovery=doc.querySelector('[data-isu-recovery]');assert.equal(recovery.hidden,false);
   f.button('Update').click();assert.equal(recovery.hidden,true);f.app.result({status:state});
   assert.equal(recovery.hidden,false);const link=recovery.querySelector('a');
-  assert.equal(link.textContent,'Download APK');assert.equal(link.href,release().apkUrl);
+  assert.equal(link.textContent,'Download APK');assert.equal(link.href,releasePage());
   assert.equal(link.hasAttribute('target'),false);assert.equal(link.hasAttribute('download'),false);assert.equal(link.onclick,null);
-  assert.match(recovery.textContent,/Open the downloaded APK from Downloads\./);
+  assert.match(recovery.textContent,/Choose the APK under Assets on GitHub\./);
   assert.match(doc.querySelector('[data-isu-status]').textContent,/Confirm the installation/);
   assert.doesNotMatch(doc.querySelector('[data-isu-status]').textContent,/failed|cancelled|could not/i);
   assert.equal(f.button('Open installer').disabled,false);f.dom.window.close();
@@ -135,7 +136,7 @@ test('modern Android keeps recovery hidden until failure and clears it during a 
  f.button('Update').click();f.app.result({status:'ready'});assert.equal(recovery.hidden,true);
  for(const state of ['error','cancelled','unconfirmed']) {
   f.app.result({status:state,apkUrl:'javascript:alert(1)'});
-  assert.equal(recovery.hidden,false);assert.equal(recovery.querySelector('a').href,release().apkUrl);
+  assert.equal(recovery.hidden,false);assert.equal(recovery.querySelector('a').href,releasePage());
   assert.equal(f.button('Try again').disabled,false);f.button('Try again').click();assert.equal(recovery.hidden,true);
   f.app.result({status:'downloading',percent:50});assert.equal(recovery.hidden,true);
   f.app.result({status:'installing'});assert.equal(recovery.hidden,true);
@@ -144,13 +145,13 @@ test('modern Android keeps recovery hidden until failure and clears it during a 
  assert.match(doc.body.textContent,/Update installed/);f.dom.window.close();
 });
 
-test('a restarted unconfirmed installation retains its APK link and revalidates persisted URLs',async()=>{
+test('a restarted unconfirmed installation derives its release page and revalidates persisted APK URLs',async()=>{
  const f=fixture(),doc=f.dom.window.document;await f.app.check();f.button('Update').click();f.app.result({status:'ready'});f.app.close();
  const key='inhouse-services-updater:youtube:installation',pending=JSON.parse(f.dom.window.localStorage.getItem(key));
  assert.equal(pending.apkUrl,release().apkUrl);
  const restarted=U.create(f.config);assert.equal(restarted.refreshInstallation(),true);
- assert.match(doc.body.textContent,/Update not confirmed/);assert.equal(doc.querySelector('.isu-download').href,release().apkUrl);restarted.close();
- for(const apkUrl of ['javascript:alert(1)','https://evil.example/app.apk',`https://github.com/other/app/releases/download/v1/app.apk`,`https://user@github.com/${repo}/releases/download/v1/app.apk`]) {
+ assert.match(doc.body.textContent,/Update not confirmed/);assert.equal(doc.querySelector('.isu-download').href,releasePage());restarted.close();
+ for(const apkUrl of ['javascript:alert(1)','https://evil.example/app.apk',`https://github.com/other/app/releases/download/v1/app.apk`,`https://user@github.com/${repo}/releases/download/v1/app.apk`,`https://github.com/${repo}/releases/download//app.apk`,`https://github.com/${repo}/releases/download/v1/extra/app.apk`,`https://github.com/${repo}/releases/download/app.apk`]) {
   f.dom.window.localStorage.setItem(key,JSON.stringify({...pending,apkUrl}));
   const restored=U.create(f.config);assert.equal(restored.refreshInstallation(),true);
   assert.equal(doc.querySelector('.isu-download'),null);assert.match(doc.body.textContent,/Update not confirmed/);restored.close();
@@ -163,8 +164,20 @@ test('a native failure after restart offers only the matching pending APK',async
   const f=fixture(),doc=f.dom.window.document;await f.app.check();f.button('Update').click();f.app.result({status:'ready'});f.app.close();
   f.dom.window.InhouseNative={getInstallState:()=>JSON.stringify({id:'native-failure',status:'error',expectedVersionCode,message:'Android could not install the update.'})};
   const restarted=U.create(f.config);assert.equal(restarted.refreshInstallation(),true);assert.match(doc.body.textContent,/Update not installed/);
-  assert.equal(doc.querySelector('.isu-download')?.href,expectedVersionCode===16?release().apkUrl:undefined);
+  assert.equal(doc.querySelector('.isu-download')?.href,expectedVersionCode===16?releasePage():undefined);
   f.dom.window.close();
+ }
+});
+
+test('recovery preserves encoded release tags and leaves the native APK URL unchanged',async()=>{
+ for(const tag of ['android-v1.0.16','android%2Fv1.0.16','release%20candidate']) {
+  const f=fixture(),doc=f.dom.window.document;
+  const apkUrl=`https://github.com/${repo}/releases/download/${tag}/app.apk?download=1#asset`;
+  f.catalogs.A=cat('A',[{...release(),apkUrl}]);assert.equal(await f.app.check(),true);
+  const link=doc.querySelector('.isu-download');
+  assert.equal(link.href,`https://github.com/${repo}/releases/tag/${tag}`);
+  assert.equal(link.hasAttribute('target'),false);assert.doesNotMatch(link.href,/\/latest|\/download\//);
+  f.button('Update').click();assert.equal(f.installs[0].apkUrl,apkUrl);f.dom.window.close();
  }
 });
 
