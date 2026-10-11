@@ -77,7 +77,7 @@ def sync(app, destination):
     if app == 'photos':
         for source in sorted((ROOT / 'android').glob('*')):
             copy(source.relative_to(ROOT).as_posix(), 'mobile/android/app/src/main/java/com/inhouse/services/updater/' + source.name)
-    lock = {'repository': 'miguelcoxcaballero/inhouse-services-updater', 'revision': revision, 'version': '1.0.0', 'appId': app, 'files': copies}
+    lock = {'repository': 'miguelcoxcaballero/inhouse-services-updater', 'revision': revision, 'version': '1.1.0', 'appId': app, 'files': copies}
     (dest / 'inhouse-updater.lock.json').write_text(json.dumps(lock, indent=2) + '\n')
     (dest / 'UPDATER.md').write_text(POLICY)
     agents = dest / 'AGENTS.md'; current = agents.read_text() if agents.exists() else ''

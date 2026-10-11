@@ -9,7 +9,7 @@ function fixture(extra={}) {
  const fetch=async url=>{requests.push(url);const channel=url.includes('B.json')?'B':'A';return {ok:true,json:async()=>url.includes('api.github.com')?{content:Buffer.from(JSON.stringify(catalogs[channel])).toString('base64')}:catalogs[channel]};};
  const config={window:dom.window,appId:'youtube',appName:'Inhouse YouTube',repository:repo,installedVersion:'0.1.5',installedVersionCode:15,now:()=>clock,fetch,install:r=>installs.push(r),...extra};
  if (!extra.defaultB) dom.window.localStorage.setItem("inhouse-services-updater:youtube",JSON.stringify({channel:"A",developmentConsent:1,snooze:{}}));
- const app=U.create(config);return {dom,app,config,catalogs,requests,installs,setTime:t=>clock=t,button:text=>[...dom.window.document.querySelectorAll('button')].find(b=>b.textContent===text)};
+ const app=U.create(config);return {dom,app,config,catalogs,requests,installs,setTime:t=>clock=t,button:text=>[...dom.window.document.querySelectorAll('button')].find(b=>(b.getAttribute('aria-label')||b.textContent)===text)};
 }
 test('embedded account settings retain channels and checks without a modal or focus trap',async()=>{
  const f=fixture({defaultB:true}),doc=f.dom.window.document,container=doc.createElement('section');doc.body.append(container);
@@ -20,7 +20,7 @@ test('embedded account settings retain channels and checks without a modal or fo
  const tab=new f.dom.window.KeyboardEvent('keydown',{key:'Tab',bubbles:true,cancelable:true});last.dispatchEvent(tab);assert.equal(tab.defaultPrevented,false);
  await f.app.check({manual:true});assert.match(container.textContent,/No releases on version B/);
  f.button('Version A').click();assert.match(container.textContent,/untested development updates/);assert.equal(f.app.getState().channel,'B');
- f.button('I understand — continue').click();const slider=container.querySelector('input');slider.value='100';slider.dispatchEvent(new f.dom.window.Event('change'));
+ f.button('I understand').click();const slider=container.querySelector('input');slider.value='100';slider.dispatchEvent(new f.dom.window.Event('change'));
  await new Promise(r=>setTimeout(r,20));assert.equal(f.app.getState().channel,'A');assert.ok(container.querySelector('[data-isu-install]'));assert.equal(doc.querySelector('[role=dialog]'),null);
  f.button('Update').click();assert.equal(f.installs.length,1);f.app.result({status:'ready'});f.app.close();assert.equal(container.children.length,0);
  f.app.settings();assert.ok(doc.querySelector('[role=dialog]'));f.dom.window.close();
@@ -49,13 +49,14 @@ test('catalog validation binds channel, hash, history and repository',()=>{
 test('popup is optional, shows compact skipped versions and installs exact verified URL/hash',async()=>{
  const f=fixture();f.catalogs.A=cat('A',[release('0.1.10',20),release('0.1.9',19),release('0.1.8',18),release('0.1.7',17),release('0.1.6',16)]);
  assert.equal(await f.app.check({manual:true}),true);
- const text=f.dom.window.document.body.textContent;assert.match(text,/0.1.5 → 0.1.10 A/);assert.match(text,/Skipped versions/);assert.match(text,/\(\+1\)/);assert.equal(f.dom.window.document.querySelectorAll('.isu-changes li').length,3);
- f.button('Update').click();assert.equal(f.installs[0].apkSha256,'a'.repeat(64));assert.equal(f.button('Remind me later').disabled,true);
- f.app.result({status:'permission_required'});assert.equal(f.button('Continue').disabled,false);f.app.result({status:'error',message:'Retry'});assert.equal(f.button('Retry').disabled,false);
+ const doc=f.dom.window.document;assert.equal(doc.querySelector('.isu-versions').textContent,'0.1.5 → 0.1.10');assert.equal(doc.querySelector('.isu-chip').textContent,'Version A');assert.equal(doc.querySelector('.isu-more').textContent,'+2 more');
+ assert.deepEqual([...doc.querySelectorAll('.isu-changes small')].map(v=>v.textContent),['0.1.10','0.1.9','0.1.8']);
+ f.button('Update').click();assert.equal(f.installs[0].apkSha256,'a'.repeat(64));assert.equal(f.button('Later').disabled,true);
+ f.app.result({status:'permission_required'});assert.equal(f.button('Continue').disabled,false);f.app.result({status:'error',message:'Checksum mismatch'});assert.equal(f.button('Try again').disabled,false);assert.match(doc.querySelector('[data-isu-status]').textContent,/Checksum mismatch/);
  f.dom.window.close();
 });
 test('14-day deferral survives restart, suppresses later releases, and manual checks bypass it',async()=>{
- const f=fixture();await f.app.check();f.button('Remind me later').click();assert.equal(f.dom.window.document.querySelector('[role=dialog]'),null);
+ const f=fixture();await f.app.check();f.button('Later').click();assert.equal(f.dom.window.document.querySelector('[role=dialog]'),null);
  const restarted=U.create(f.config);f.catalogs.A=cat('A',[release('0.1.7',17)]);const calls=f.requests.length;
  assert.equal(await restarted.check(),false);assert.equal(f.requests.length,calls);
  assert.equal(await restarted.check({manual:true}),true);restarted.close();
@@ -64,7 +65,7 @@ test('14-day deferral survives restart, suppresses later releases, and manual ch
  f.dom.window.close();
 });
 test('same long-lived updater reminds after two weeks',async()=>{
- const f=fixture();await f.app.check();f.button('Remind me later').click();f.setTime(100000+U.TWO_WEEKS+1);await f.app.check();assert.ok(f.button('Update'));f.dom.window.close();
+ const f=fixture();await f.app.check();f.button('Later').click();f.setTime(100000+U.TWO_WEEKS+1);await f.app.check();assert.ok(f.button('Update'));f.dom.window.close();
 });
 test('settings exposes A/B, empty B stays empty and never falls back to A or latest',async()=>{
  const f=fixture();f.app.settings();f.button('Version B').click();await new Promise(r=>setTimeout(r,20));
@@ -77,7 +78,7 @@ test('channel switch cannot display the old in-flight A result',async()=>{
 });
 test('quiet host emits catalog; prechecked popup respects persistent snooze/channel',async()=>{
  const offers=[];const f=fixture({onOffer:v=>offers.push(v)});await f.app.check();assert.equal(offers.length,1);assert.equal(f.dom.window.document.querySelector('[role=dialog]'),null);
- assert.equal(f.app.offerPending(offers[0]),true);f.button('Remind me later').click();assert.equal(f.app.offerPending(offers[0]),false);f.dom.window.close();
+ assert.equal(f.app.offerPending(offers[0]),true);f.button('Later').click();assert.equal(f.app.offerPending(offers[0]),false);f.dom.window.close();
 });
 test('changelog content is text, not HTML',async()=>{const f=fixture();f.catalogs.A=cat('A',[release('0.1.6',16,'<img src=x onerror=alert(1)>')]);await f.app.check();assert.equal(f.dom.window.document.querySelector('img'),null);f.dom.window.close();});
 
@@ -89,12 +90,30 @@ test('B is the default and legacy implicit A migrates without losing snoozes',()
 test('A needs acknowledgement and completed slide; cancelling and partial slides keep B',async()=>{
  const f=fixture({defaultB:true});f.app.settings();f.button('Version A').click();
  assert.equal(f.requests.length,0);assert.equal(f.app.getState().channel,'B');assert.match(f.dom.window.document.body.textContent,/untested development updates/);
- f.button('Keep version B').click();f.button('Version A').click();
+ f.button('Cancel').click();f.button('Version A').click();
  const slider=f.dom.window.document.querySelector('input');assert.equal(slider.parentElement.hidden,true);
  slider.value='100';slider.dispatchEvent(new f.dom.window.Event('change'));assert.equal(f.app.getState().channel,'B');
- f.button('I understand — continue').click();slider.value='80';slider.dispatchEvent(new f.dom.window.Event('change'));assert.equal(f.app.getState().channel,'B');assert.equal(slider.value,'0');
+ f.button('I understand').click();slider.value='80';slider.dispatchEvent(new f.dom.window.Event('change'));assert.equal(f.app.getState().channel,'B');assert.equal(slider.value,'0');
  slider.value='100';slider.dispatchEvent(new f.dom.window.Event('change'));await new Promise(r=>setTimeout(r,20));
  assert.equal(f.app.getState().channel,'A');assert.equal(U.create(f.config).getState().developmentConsent,1);
  f.app.settings();f.button('Version B').click();await new Promise(r=>setTimeout(r,20));assert.equal(f.app.getState().developmentConsent,0);
  assert.equal(f.dom.window.document.querySelector('.isu-github').href,'https://github.com/'+repo);f.dom.window.close();
+});
+
+test('ready state leaves Later available and shows how to finish',async()=>{
+ const f=fixture();await f.app.check();f.button('Update').click();
+ const doc=f.dom.window.document;assert.equal(doc.querySelector('.isu-dock').dataset.state,'busy');
+ f.app.result({status:'downloading',downloadedBytes:1000,totalBytes:2000});assert.equal(doc.querySelector('progress').value,50);
+ f.app.result({status:'ready'});assert.equal(doc.querySelector('.isu-dock').dataset.state,'idle');assert.equal(f.button('Later').disabled,false);
+ assert.equal(f.button('Installing…').disabled,true);assert.match(doc.querySelector('[data-isu-status]').textContent,/Confirm the installation/);f.dom.window.close();
+});
+test('tapping outside the sheet defers like Later, but never while downloading',async()=>{
+ const f=fixture();await f.app.check();const doc=f.dom.window.document;
+ f.button('Update').click();doc.querySelector('.isu-overlay').click();assert.ok(doc.querySelector('[role=dialog]'));
+ f.app.result({status:'error',message:'Offline'});doc.querySelector('.isu-overlay').click();
+ assert.equal(doc.querySelector('[role=dialog]'),null);assert.ok(f.app.getState().snooze.A>100000);f.dom.window.close();
+});
+test('offer links back to channel settings',async()=>{
+ const f=fixture();await f.app.check();f.button('Version A, change channel').click();
+ assert.equal(f.button('Version A').getAttribute('aria-pressed'),'true');assert.ok(f.button('Check for updates'));f.dom.window.close();
 });
