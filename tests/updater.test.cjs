@@ -49,8 +49,10 @@ test('catalog validation binds channel, hash, history and repository',()=>{
 test('popup is optional, shows compact skipped versions and installs exact verified URL/hash',async()=>{
  const f=fixture();f.catalogs.A=cat('A',[release('0.1.10',20),release('0.1.9',19),release('0.1.8',18),release('0.1.7',17),release('0.1.6',16)]);
  assert.equal(await f.app.check({manual:true}),true);
- const doc=f.dom.window.document;assert.equal(doc.querySelector('.isu-versions').textContent,'0.1.5 → 0.1.10');assert.equal(doc.querySelector('.isu-chip').textContent,'Version A');assert.equal(doc.querySelector('.isu-more').textContent,'+2 more');
- assert.deepEqual([...doc.querySelectorAll('.isu-changes small')].map(v=>v.textContent),['0.1.10','0.1.9','0.1.8']);
+ const doc=f.dom.window.document;assert.equal(doc.querySelector('.isu-versions').textContent,'0.1.5 → 0.1.10');assert.equal(doc.querySelector('.isu-note').textContent,'Canales A/B y recordatorio.');assert.equal(doc.querySelector('.isu-more').hidden,true);
+ f.button('Details').click();assert.equal(doc.querySelector('.isu-more').hidden,false);assert.equal(doc.querySelector('.isu-disclosure').getAttribute('aria-expanded'),'true');
+ assert.deepEqual([...doc.querySelectorAll('.isu-changes small')].map(v=>v.textContent),['0.1.9','0.1.8','0.1.7']);assert.equal(doc.querySelector('.isu-earlier').textContent,'+1 earlier version');
+ assert.match(doc.querySelector('.isu-facts').textContent,/Version A/);
  f.button('Update').click();assert.equal(f.installs[0].apkSha256,'a'.repeat(64));assert.equal(f.button('Later').disabled,true);
  f.app.result({status:'permission_required'});assert.equal(f.button('Continue').disabled,false);f.app.result({status:'error',message:'Checksum mismatch'});assert.equal(f.button('Try again').disabled,false);assert.match(doc.querySelector('[data-isu-status]').textContent,/Checksum mismatch/);
  f.dom.window.close();
@@ -114,6 +116,6 @@ test('tapping outside the sheet defers like Later, but never while downloading',
  assert.equal(doc.querySelector('[role=dialog]'),null);assert.ok(f.app.getState().snooze.A>100000);f.dom.window.close();
 });
 test('offer links back to channel settings',async()=>{
- const f=fixture();await f.app.check();f.button('Version A, change channel').click();
+ const f=fixture();await f.app.check();f.button('Details').click();f.button('Change channel').click();
  assert.equal(f.button('Version A').getAttribute('aria-pressed'),'true');assert.ok(f.button('Check for updates'));f.dom.window.close();
 });
