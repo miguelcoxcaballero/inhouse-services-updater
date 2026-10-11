@@ -1,0 +1,72 @@
+{
+  "verifiedAt": "2026-10-11T16:01:55.475032+00:00",
+  "commonRevision": "ff20596f137119b98844a03a75836099ac7e146b",
+  "commonTests": {
+    "javascriptPolicyCases": 8,
+    "publicationPolicyCases": 4,
+    "ci": "https://github.com/miguelcoxcaballero/inhouse-services-updater/actions/runs/38152447934",
+    "browser": "Exact bundled popup checked in Chromium, light/dark; download callbacks, channel isolation and persisted 14-day reminder."
+  },
+  "consumers": [
+    {
+      "repository": "miguelcoxcaballero/youtube-calma",
+      "version": "0.1.6",
+      "versionCode": 1557278151,
+      "channel": "A",
+      "apkUrl": "https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v0.1.6/YouTube-Calma-0.1.6.apk",
+      "apkSha256": "0d7c0c9f2b7ccf6d6c90f0dc44a534b170782ac7bd7abd5254a90291c6371fa7",
+      "apkSizeBytes": 183345997,
+      "updaterRevision": "ff20596f137119b98844a03a75836099ac7e146b",
+      "validationUrl": "https://github.com/miguelcoxcaballero/youtube-calma/actions/runs/38152226040"
+    },
+    {
+      "repository": "miguelcoxcaballero/ig-calma",
+      "version": "0.4.16",
+      "versionCode": 384510844,
+      "channel": "A",
+      "apkUrl": "https://github.com/miguelcoxcaballero/ig-calma/releases/download/v0.4.16/IG-Calma-0.4.16.apk",
+      "apkSha256": "2371de7692e663cd28ffba2a03c913df277c2b7e507c6ac8ca25764ed839cc74",
+      "apkSizeBytes": 147912053,
+      "updaterRevision": "ff20596f137119b98844a03a75836099ac7e146b",
+      "validationUrl": "https://github.com/miguelcoxcaballero/ig-calma/actions/runs/38152220446"
+    },
+    {
+      "repository": "miguelcoxcaballero/inhousenotes",
+      "version": "1.0.11",
+      "versionCode": 12,
+      "channel": "A",
+      "apkUrl": "https://github.com/miguelcoxcaballero/inhousenotes/releases/download/android-v1.0.11/inhouse-notes-release-v1.0.11.apk",
+      "apkSha256": "72fa07c65cfaaaf24665029cba0a1a5971c74e466645eaeaeca55166fa8fec26",
+      "apkSizeBytes": 3171655,
+      "updaterRevision": "ff20596f137119b98844a03a75836099ac7e146b",
+      "validationUrl": "https://github.com/miguelcoxcaballero/inhousenotes/actions/runs/38151204222"
+    },
+    {
+      "repository": "miguelcoxcaballero/inhouse-read",
+      "version": "1.1.11",
+      "versionCode": 24,
+      "channel": "A",
+      "apkUrl": "https://github.com/miguelcoxcaballero/inhouse-read/releases/download/android-v1.1.11/inhouse-read-release-v1.1.11.apk",
+      "apkSha256": "4f19d71a49186f09c64af9d64e2a81e719fa571ca5aea37dc98decf4f723c23e",
+      "apkSizeBytes": 78532469,
+      "updaterRevision": "ff20596f137119b98844a03a75836099ac7e146b",
+      "validationUrl": "https://github.com/miguelcoxcaballero/inhouse-read/actions/runs/38152535152"
+    },
+    {
+      "repository": "miguelcoxcaballero/Inhouse-Photos",
+      "version": "3.1.102",
+      "versionCode": 7160,
+      "channel": "A",
+      "apkUrl": "https://github.com/miguelcoxcaballero/Inhouse-Photos/releases/download/v3.1.102-a/Inhouse-Photos.apk",
+      "apkSha256": "169c6a3ce5f5ef084a0472eda7f475341fea01ebfa890bfbce8f6969c3beceaf",
+      "apkSizeBytes": 75042756,
+      "updaterRevision": "ff20596f137119b98844a03a75836099ac7e146b",
+      "validationUrl": "https://github.com/miguelcoxcaballero/Inhouse-Photos/actions/runs/38151893484"
+    }
+  ],
+  "limits": [
+    "No physical-device or authenticated-account test performed for this integration.",
+    "Notes general production suite still fails the unchanged scanner geometry case; updater, version and 25 focused browser checks pass.",
+    "A/B controls Android APK releases. Notes/Read hosted web content must be version-pinned before a future explicit B promotion."
+  ]
+}
