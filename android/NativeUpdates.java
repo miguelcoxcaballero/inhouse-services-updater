@@ -143,7 +143,7 @@ public final class NativeUpdates {
         try {
             String key=UpdateState.offerKey(application,pendingUpdate);
             if(key.equals(offeredKey))return;
-            activity.startActivity(new Intent(activity, UpdateActivity.class).putExtra("manifest", pendingUpdate));
+            activity.startActivity(new Intent().setClassName(activity.getPackageName(),UpdateState.config(application).optString("activityClass",UpdateActivity.class.getName())).putExtra("manifest", pendingUpdate));
             offeredKey = key;
         } catch (RuntimeException error) {
             Log.w("CalmaUpdates", "Unable to show update popup", error);

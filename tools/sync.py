@@ -38,6 +38,7 @@ def digest(path): return hashlib.sha256(path.read_bytes()).hexdigest()
 
 def sync(app, destination):
     slug, name = APPS[app]; dest = Path(destination).resolve()
+    subprocess.run(['git','diff','--exit-code','HEAD','--','web','android','tools','docs','AGENTS.md','README.md'],cwd=ROOT,check=True,stdout=subprocess.DEVNULL)
     revision = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
     copies = {}
     def copy(source, target):
@@ -48,6 +49,7 @@ def sync(app, destination):
             if source.is_file(): copy(source.relative_to(ROOT).as_posix(), 'vendor/inhouse-services-updater/' + source.relative_to(ROOT).as_posix())
     copy('tools/verify.py', 'vendor/inhouse-services-updater/verify.py')
     copy('tools/catalog.py', 'vendor/inhouse-services-updater/catalog.py')
+    copy('tools/register_android.py', 'vendor/inhouse-services-updater/register_android.py')
     for document in ('AGENTS.md', 'README.md', 'docs/PROTOCOL.md', 'docs/PROVENANCE.md'):
         copy(document, 'vendor/inhouse-services-updater/' + document)
     if app in ('youtube', 'instagram', 'photos'):
@@ -57,7 +59,10 @@ def sync(app, destination):
         config = {'appId': app, 'appName': name, 'repository': 'miguelcoxcaballero/' + slug}
         if app in ('youtube','instagram'):
             manifest = dest / ('native/android-update.json' if app == 'instagram' else 'android-update.json')
-            config['installedVersion'] = json.loads(manifest.read_text())['version']
+            import re
+            build = dest / ('native/src/es/calma/instagram/nativeapp/CalmaBuild.java' if app == 'instagram' else 'src/es/calma/youtube/nativeapp/CalmaBuild.java')
+            config['installedVersion'] = re.search(r'VERSION = "([^"]+)"', build.read_text())[1]
+            config['activityClass'] = 'es.calma.' + ('instagram' if app == 'instagram' else 'youtube') + '.UpdateActivity'
         (dest / assets / 'config.json').write_text(json.dumps(config, indent=2) + '\n')
     else:
         assets = 'src/vendor/inhouse-services-updater' if app == 'read' else 'shared/inhouse-services-updater'
