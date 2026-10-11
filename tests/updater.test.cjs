@@ -102,12 +102,70 @@ test('A needs acknowledgement and completed slide; cancelling and partial slides
  assert.equal(f.dom.window.document.querySelector('.isu-github').href,'https://github.com/'+repo);f.dom.window.close();
 });
 
-test('ready state leaves Later available and shows how to finish',async()=>{
+test('opening Android is not installation success and never leaves a disabled retry',async()=>{
  const f=fixture();await f.app.check();f.button('Update').click();
  const doc=f.dom.window.document;assert.equal(doc.querySelector('.isu-dock').dataset.state,'busy');
  f.app.result({status:'downloading',downloadedBytes:1000,totalBytes:2000});assert.equal(doc.querySelector('progress').value,50);
  f.app.result({status:'ready'});assert.equal(doc.querySelector('.isu-dock').dataset.state,'idle');assert.equal(f.button('Later').disabled,false);
- assert.equal(f.button('Installing…').disabled,true);assert.match(doc.querySelector('[data-isu-status]').textContent,/Confirm the installation/);f.dom.window.close();
+ assert.equal(f.button('Open installer').disabled,false);assert.match(doc.querySelector('[data-isu-status]').textContent,/Confirm the installation/);
+ assert.equal(f.app.refreshInstallation(),true);assert.equal(f.button('Try again').disabled,false);
+ assert.match(doc.querySelector('[data-isu-status]').textContent,/not been confirmed/);
+ f.button('Try again').click();assert.equal(f.installs.length,2);f.dom.window.close();
+});
+
+test('installation survives process restart and only a newer installed package confirms success',async()=>{
+ let code=15;const f=fixture({getVersionCode:()=>code,getVersion:()=>code===16?'0.1.6':'0.1.5'});
+ await f.app.check();f.button('Update').click();f.app.result({status:'ready'});f.app.close();
+ const restarted=U.create(f.config);assert.equal(restarted.refreshInstallation(),true);
+ assert.match(f.dom.window.document.body.textContent,/Update not confirmed/);
+ assert.doesNotMatch(f.dom.window.document.body.textContent,/Update installed/);
+ restarted.close();code=16;
+ const updated=U.create(f.config);assert.equal(updated.refreshInstallation(),true);
+ assert.match(f.dom.window.document.body.textContent,/Update installed/);assert.match(f.dom.window.document.body.textContent,/0\.1\.6/);
+ updated.close();assert.equal(U.create(f.config).refreshInstallation(),false);f.dom.window.close();
+});
+
+test('native cancellation and Android failure show a result once and allow another attempt',async()=>{
+ for(const state of [{id:'cancel',status:'cancelled',message:'Installation cancelled.'},{id:'fail',status:'error',message:'Android rejected the update.'}]) {
+  const f=fixture();await f.app.check();f.button('Update').click();f.app.result({status:'ready'});
+  f.dom.window.InhouseNative={getInstallState:()=>JSON.stringify({...state,expectedVersionCode:16,actualVersionCode:15})};
+  assert.equal(f.app.refreshInstallation(),true);assert.equal(f.button('Try again').disabled,false);
+  assert.match(f.dom.window.document.querySelector('[data-isu-status]').textContent,new RegExp(state.message));
+  assert.equal(f.app.refreshInstallation(),false);f.button('Try again').click();assert.equal(f.installs.length,2);f.dom.window.close();
+ }
+});
+
+test('old native success cannot replace a newer update offer',async()=>{
+ const f=fixture();f.catalogs.A=cat('A',[release('0.1.7',17)]);await f.app.check();
+ f.dom.window.InhouseNative={getInstallState:()=>JSON.stringify({id:'previous',status:'installed',expectedVersionCode:16,actualVersionCode:16})};
+ assert.equal(f.app.refreshInstallation(),false);assert.ok(f.button('Update'));assert.doesNotMatch(f.dom.window.document.body.textContent,/Update installed/);f.dom.window.close();
+});
+
+test('an older persisted web attempt cannot replace a newer visible offer',async()=>{
+ let code=15;const f=fixture({getVersionCode:()=>code,getVersion:()=>code===16?'0.1.6':'0.1.5'});
+ await f.app.check();f.button('Update').click();f.app.result({status:'ready'});f.app.refreshInstallation();f.app.close();
+ code=16;f.catalogs.A=cat('A',[release('0.1.7',17)]);await f.app.check({manual:true});
+ f.dom.window.InhouseNative={getInstallState:()=>JSON.stringify({id:'old',status:'installed',expectedVersionCode:16,actualVersionCode:16})};
+ assert.equal(f.app.refreshInstallation(),false);assert.ok(f.button('Update'));assert.match(f.dom.window.document.querySelector('.isu-versions').textContent,/0\.1\.7/);
+ assert.doesNotMatch(f.dom.window.document.body.textContent,/Update installed/);f.dom.window.close();
+});
+
+test('a late package replacement can confirm an earlier unknown result from the same attempt',()=>{
+ const f=fixture();let outcome={id:'attempt',status:'error',message:'Could not confirm the installation.',expectedVersionCode:16,actualVersionCode:15};
+ f.dom.window.InhouseNative={getInstallState:()=>JSON.stringify(outcome)};
+ assert.equal(f.app.refreshInstallation(),true);assert.match(f.dom.window.document.body.textContent,/Update not installed/);
+ f.app.close();outcome={...outcome,status:'installed',actualVersionCode:16};
+ assert.equal(f.app.refreshInstallation(),true);assert.match(f.dom.window.document.body.textContent,/Update installed/);
+ f.app.close();assert.equal(f.app.refreshInstallation(),false);f.dom.window.close();
+});
+
+test('quiet checker never consumes the result needed by the foreground host',()=>{
+ const f=fixture({onOffer:()=>{}});
+ f.dom.window.InhouseNative={getInstallState:()=>JSON.stringify({id:'native',status:'installed',expectedVersionCode:16,actualVersionCode:16})};
+ assert.equal(f.app.refreshInstallation(),false);assert.equal(f.dom.window.document.querySelector('[role=dialog]'),null);
+ const foreground=U.create({...f.config,onOffer:undefined});assert.equal(foreground.refreshInstallation(),true);
+ assert.match(f.dom.window.document.body.textContent,/Update installed/);foreground.close();
+ assert.equal(U.create({...f.config,onOffer:undefined}).refreshInstallation(),false);f.dom.window.close();
 });
 test('tapping outside the sheet defers like Later, but never while downloading',async()=>{
  const f=fixture();await f.app.check();const doc=f.dom.window.document;

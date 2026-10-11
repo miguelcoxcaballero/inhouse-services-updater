@@ -11,6 +11,16 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Prepare native persistence checks
+        run: |
+          curl --fail --location --silent --show-error https://repo.maven.apache.org/maven2/org/json/json/20240303/json-20240303.jar -o "$RUNNER_TEMP/json.jar"
+          printf '3cf6cd6892e32e2b4c1c39e0f52f5248a2f5b37646fdfbb79a66b46b618414ed  %s\n' "$RUNNER_TEMP/json.jar" | sha256sum --check
       - run: npm ci
       - run: npm test
       - run: python3 -m unittest discover -s tests -p 'test_*.py'
+        env:
+          JSON_JAR: ${{ runner.temp }}/json.jar
