@@ -113,6 +113,61 @@ test('opening Android is not installation success and never leaves a disabled re
  f.button('Try again').click();assert.equal(f.installs.length,2);f.dom.window.close();
 });
 
+test('legacy Android offers a normal validated APK link immediately and after ready without claiming failure',async()=>{
+ for(const state of ['ready','installing']) {
+  const f=fixture(),doc=f.dom.window.document;await f.app.check();
+  const recovery=doc.querySelector('[data-isu-recovery]');assert.equal(recovery.hidden,false);
+  f.button('Update').click();assert.equal(recovery.hidden,true);f.app.result({status:state});
+  assert.equal(recovery.hidden,false);const link=recovery.querySelector('a');
+  assert.equal(link.textContent,'Download APK');assert.equal(link.href,release().apkUrl);
+  assert.equal(link.hasAttribute('target'),false);assert.equal(link.hasAttribute('download'),false);assert.equal(link.onclick,null);
+  assert.match(recovery.textContent,/Open the downloaded APK from Downloads\./);
+  assert.match(doc.querySelector('[data-isu-status]').textContent,/Confirm the installation/);
+  assert.doesNotMatch(doc.querySelector('[data-isu-status]').textContent,/failed|cancelled|could not/i);
+  assert.equal(f.button('Open installer').disabled,false);f.dom.window.close();
+ }
+});
+
+test('modern Android keeps recovery hidden until failure and clears it during a new attempt',async()=>{
+ const f=fixture(),doc=f.dom.window.document;
+ f.dom.window.InhouseNative={getInstallState:()=>'{}'};await f.app.check();
+ const recovery=doc.querySelector('[data-isu-recovery]');assert.equal(recovery.hidden,true);
+ f.button('Update').click();f.app.result({status:'ready'});assert.equal(recovery.hidden,true);
+ for(const state of ['error','cancelled','unconfirmed']) {
+  f.app.result({status:state,apkUrl:'javascript:alert(1)'});
+  assert.equal(recovery.hidden,false);assert.equal(recovery.querySelector('a').href,release().apkUrl);
+  assert.equal(f.button('Try again').disabled,false);f.button('Try again').click();assert.equal(recovery.hidden,true);
+  f.app.result({status:'downloading',percent:50});assert.equal(recovery.hidden,true);
+  f.app.result({status:'installing'});assert.equal(recovery.hidden,true);
+ }
+ f.app.result({status:'installed'});assert.equal(doc.querySelector('[data-isu-recovery]'),null);
+ assert.match(doc.body.textContent,/Update installed/);f.dom.window.close();
+});
+
+test('a restarted unconfirmed installation retains its APK link and revalidates persisted URLs',async()=>{
+ const f=fixture(),doc=f.dom.window.document;await f.app.check();f.button('Update').click();f.app.result({status:'ready'});f.app.close();
+ const key='inhouse-services-updater:youtube:installation',pending=JSON.parse(f.dom.window.localStorage.getItem(key));
+ assert.equal(pending.apkUrl,release().apkUrl);
+ const restarted=U.create(f.config);assert.equal(restarted.refreshInstallation(),true);
+ assert.match(doc.body.textContent,/Update not confirmed/);assert.equal(doc.querySelector('.isu-download').href,release().apkUrl);restarted.close();
+ for(const apkUrl of ['javascript:alert(1)','https://evil.example/app.apk',`https://github.com/other/app/releases/download/v1/app.apk`,`https://user@github.com/${repo}/releases/download/v1/app.apk`]) {
+  f.dom.window.localStorage.setItem(key,JSON.stringify({...pending,apkUrl}));
+  const restored=U.create(f.config);assert.equal(restored.refreshInstallation(),true);
+  assert.equal(doc.querySelector('.isu-download'),null);assert.match(doc.body.textContent,/Update not confirmed/);restored.close();
+ }
+ f.dom.window.close();
+});
+
+test('a native failure after restart offers only the matching pending APK',async()=>{
+ for(const expectedVersionCode of [16,17]) {
+  const f=fixture(),doc=f.dom.window.document;await f.app.check();f.button('Update').click();f.app.result({status:'ready'});f.app.close();
+  f.dom.window.InhouseNative={getInstallState:()=>JSON.stringify({id:'native-failure',status:'error',expectedVersionCode,message:'Android could not install the update.'})};
+  const restarted=U.create(f.config);assert.equal(restarted.refreshInstallation(),true);assert.match(doc.body.textContent,/Update not installed/);
+  assert.equal(doc.querySelector('.isu-download')?.href,expectedVersionCode===16?release().apkUrl:undefined);
+  f.dom.window.close();
+ }
+});
+
 test('installation survives process restart and only a newer installed package confirms success',async()=>{
  let code=15;const f=fixture({getVersionCode:()=>code,getVersion:()=>code===16?'0.1.6':'0.1.5'});
  await f.app.check();f.button('Update').click();f.app.result({status:'ready'});f.app.close();
