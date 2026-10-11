@@ -21,6 +21,7 @@ Canonical repository: https://github.com/miguelcoxcaballero/inhouse-services-upd
 
 Every AI/developer working in this app must read this section even without opening the updater repository:
 
+- **B is the default update channel.** A requires an English development warning, explicit acknowledgement and slide confirmation. Legacy implicit A preferences migrate to B; choosing B clears A consent. This does not authorize publishing or promoting a B release.
 - All new changes and automatic releases go to **A** (rapid changes/testing).
 - **B** (reviewed releases) requires the user's **explicit request**. Tests passing is not permission to promote.
 - Every release needs a tiny changelog: preferably 2–10 words, maximum 120 characters.
@@ -76,7 +77,10 @@ def sync(app, destination):
     (dest / 'UPDATER.md').write_text(POLICY)
     agents = dest / 'AGENTS.md'; current = agents.read_text() if agents.exists() else ''
     marker = '# Inhouse services updater — mandatory shared updater policy'
-    current = current.split(marker)[0].rstrip()
+    before, _, after = current.partition(marker)
+    # Preserve app-specific sections appended after our generated policy.
+    extra = after[after.find('\n# '):] if '\n# ' in after else ''
+    current = (before + extra).rstrip()
     agents.write_text(current + '\n\n' + POLICY)
     print(f'Synced {app} at {revision}: {len(copies)} identical files')
 
