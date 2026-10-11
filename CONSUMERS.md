@@ -1,6 +1,6 @@
 # Integraciones Android
 
-Las cinco aplicaciones incorporan el mismo código común de la revisión `ff20596f137119b98844a03a75836099ac7e146b`. Las publicaciones iniciales son **A**; B sigue vacío hasta una petición expresa.
+Las siguientes son las primeras integraciones del código común, de la revisión `ff20596f137119b98844a03a75836099ac7e146b`. Esta tabla es histórica; las versiones actuales están en `updates/A.json` y `updates/B.json` de cada aplicación. A incluye todas las versiones A y B y ofrece la de mayor `versionCode`; B solo incluye las autorizadas expresamente para B.
 
 | App | Versión A | APK |
 | --- | --- | --- |
