@@ -11,6 +11,27 @@ function fixture(extra={}) {
  if (!extra.defaultB) dom.window.localStorage.setItem("inhouse-services-updater:youtube",JSON.stringify({channel:"A",developmentConsent:1,snooze:{}}));
  const app=U.create(config);return {dom,app,config,catalogs,requests,installs,setTime:t=>clock=t,button:text=>[...dom.window.document.querySelectorAll('button')].find(b=>b.textContent===text)};
 }
+test('embedded account settings retain channels and checks without a modal or focus trap',async()=>{
+ const f=fixture({defaultB:true}),doc=f.dom.window.document,container=doc.createElement('section');doc.body.append(container);
+ f.app.settings('',{container});
+ assert.equal(doc.querySelector('[role=dialog]'),null);assert.equal(doc.querySelector('[aria-modal]'),null);
+ assert.ok(container.querySelector('.isu-inline[role=region]'));assert.ok(f.button('Version B'));
+ const last=container.querySelector('.isu-github');last.focus();
+ const tab=new f.dom.window.KeyboardEvent('keydown',{key:'Tab',bubbles:true,cancelable:true});last.dispatchEvent(tab);assert.equal(tab.defaultPrevented,false);
+ await f.app.check({manual:true});assert.match(container.textContent,/No releases on version B/);
+ f.button('Version A').click();assert.match(container.textContent,/untested development updates/);assert.equal(f.app.getState().channel,'B');
+ f.button('I understand — continue').click();const slider=container.querySelector('input');slider.value='100';slider.dispatchEvent(new f.dom.window.Event('change'));
+ await new Promise(r=>setTimeout(r,20));assert.equal(f.app.getState().channel,'A');assert.ok(container.querySelector('[data-isu-install]'));assert.equal(doc.querySelector('[role=dialog]'),null);
+ f.button('Update').click();assert.equal(f.installs.length,1);f.app.result({status:'ready'});f.app.close();assert.equal(container.children.length,0);
+ f.app.settings();assert.ok(doc.querySelector('[role=dialog]'));f.dom.window.close();
+});
+
+test('closing an embedded menu prevents a pending manual result from opening a popup',async()=>{
+ let respond;const f=fixture({fetch:()=>new Promise(resolve=>respond=resolve)}),container=f.dom.window.document.createElement('section');f.dom.window.document.body.append(container);
+ f.app.settings('',{container});const pending=f.app.check({manual:true});f.app.close();respond({ok:true,json:async()=>cat()});
+ assert.equal(await pending,false);assert.equal(f.dom.window.document.querySelector('#inhouse-services-update'),null);f.dom.window.close();
+});
+
 test('catalog validation binds channel, hash, history and repository',()=>{
  assert.equal(U.validateCatalog(cat(),'A',{repository:repo}).latest.version,'0.1.6');
  for(const mutate of [v=>v.channel='B',v=>v.latest={...v.latest,apkUrl:'https://evil.example/app.apk'},v=>v.latest={...v.latest,apkSha256:'x'},v=>v.latest={...v.latest,changelog:'x'.repeat(121)},v=>v.releases.push(v.latest)]){
