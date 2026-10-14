@@ -37,6 +37,10 @@ class InstallResultPolicyTest(unittest.TestCase):
 import com.inhouse.services.updater.InstallResultPolicy;
 public final class InstallPolicyProbe {
     public static void main(String[] args) {
+        if ("session".equals(args[0])) {
+            System.out.print(InstallResultPolicy.sessionMessage(Integer.parseInt(args[1])));
+            return;
+        }
         if ("message".equals(args[0])) {
             System.out.print(InstallResultPolicy.failureMessage(Integer.parseInt(args[1])));
             return;
@@ -56,6 +60,14 @@ public final class InstallPolicyProbe {
         return subprocess.run(['java', '-cp', str(self.root), 'InstallPolicyProbe',
             mode, str(expected), str(actual), str(status), str(different_process).lower()],
             check=True, capture_output=True, text=True).stdout
+
+    def test_session_errors_are_actionable_and_not_success(self):
+        for code, reason in ((2, 'restrictions'), (3, 'cancelled'), (4, 'read'),
+                             (5, 'signature'), (6, 'storage'), (7, 'compatible'), (1, 'Download APK')):
+            message = subprocess.run(['java', '-cp', str(self.root), 'InstallPolicyProbe',
+                'session', str(code)], check=True, capture_output=True, text=True).stdout
+            self.assertIn(reason, message)
+            self.assertNotIn('Update installed.', message)
 
     def test_cancelling_android_installer_is_retryable(self):
         self.assertEqual(self.result('callback', 42, 41, 0), 'cancelled')

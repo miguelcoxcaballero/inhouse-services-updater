@@ -129,17 +129,17 @@ test('legacy Android offers the specific GitHub release immediately and after re
  }
 });
 
-test('modern Android keeps recovery hidden until failure and clears it during a new attempt',async()=>{
+test('modern Android with a broken result bridge can recover before or after installer handoff',async()=>{
  const f=fixture(),doc=f.dom.window.document;
  f.dom.window.InhouseNative={getInstallState:()=>'{}'};await f.app.check();
- const recovery=doc.querySelector('[data-isu-recovery]');assert.equal(recovery.hidden,true);
- f.button('Update').click();f.app.result({status:'ready'});assert.equal(recovery.hidden,true);
+ const recovery=doc.querySelector('[data-isu-recovery]');assert.equal(recovery.hidden,false);
+ f.button('Update').click();f.app.result({status:'ready'});assert.equal(recovery.hidden,false);
  for(const state of ['error','cancelled','unconfirmed']) {
   f.app.result({status:state,apkUrl:'javascript:alert(1)'});
   assert.equal(recovery.hidden,false);assert.equal(recovery.querySelector('a').href,releasePage());
   assert.equal(f.button('Try again').disabled,false);f.button('Try again').click();assert.equal(recovery.hidden,true);
   f.app.result({status:'downloading',percent:50});assert.equal(recovery.hidden,true);
-  f.app.result({status:'installing'});assert.equal(recovery.hidden,true);
+  f.app.result({status:'installing'});assert.equal(recovery.hidden,false);
  }
  f.app.result({status:'installed'});assert.equal(doc.querySelector('[data-isu-recovery]'),null);
  assert.match(doc.body.textContent,/Update installed/);f.dom.window.close();
