@@ -77,14 +77,14 @@ def tap(label,seconds=35):
   run('adb','shell','uiautomator','dump','/sdcard/session-ui.xml',stdout=subprocess.DEVNULL)
   xml=output('adb','shell','cat','/sdcard/session-ui.xml');(OUT/'screen.xml').write_text(xml)
   for node in ET.fromstring(xml).iter('node'):
-   if node.get('text','').casefold()==label.casefold():
+   if node.get('text','').casefold() in [item.casefold() for item in label.split('|')]:
     x1,y1,x2,y2=map(int,re.findall(r'\d+',node.get('bounds')))
     run('adb','shell','input','tap',(x1+x2)//2,(y1+y2)//2);return
   time.sleep(1)
  raise AssertionError('Android did not show '+label)
 try:
  tap('Install test update')
- tap('Install')
+ tap('Install|Update')
  deadline=time.monotonic()+45
  while time.monotonic()<deadline:
   package=output('adb','shell','dumpsys','package',PACKAGE)
