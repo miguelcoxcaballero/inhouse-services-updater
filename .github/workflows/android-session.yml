@@ -15,6 +15,7 @@ jobs:
         with: {distribution: temurin, java-version: 21}
       - name: Enable KVM
         run: sudo chmod 666 /dev/kvm
+      - uses: android-actions/setup-android@v3
       - name: Install build tools
         run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
       - name: Upgrade through the real Android 16 installer
