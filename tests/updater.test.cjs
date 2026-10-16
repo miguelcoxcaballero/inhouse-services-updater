@@ -245,3 +245,15 @@ test('offer links back to channel settings',async()=>{
  const f=fixture();await f.app.check();f.button('Details').click();f.button('Change channel').click();
  assert.equal(f.button('Version A').getAttribute('aria-pressed'),'true');assert.ok(f.button('Check for updates'));f.dom.window.close();
 });
+
+test('returning focus during a native session does not report an unconfirmed failure',async()=>{
+ const f=fixture();Object.defineProperty(f.dom.window.document,'visibilityState',{value:'visible'});
+ let state={id:'active',status:'installing',expectedVersionCode:16,actualVersionCode:15};
+ f.dom.window.InhouseNative={getInstallState:()=>JSON.stringify(state)};
+ await f.app.check({manual:true});f.button('Update').click();f.app.result({status:'installing'});
+ assert.equal(f.app.refreshInstallation(),false);
+ assert.match(f.dom.window.document.querySelector('[data-isu-status]').textContent,/Confirm the installation/);
+ state={...state,status:'cancelled',message:'Installation cancelled.'};
+ assert.equal(f.app.refreshInstallation(),true);assert.equal(f.button('Try again').disabled,false);
+ f.dom.window.close();
+});

@@ -28,15 +28,19 @@ public class InstallState { public static String status="installing",message="";
  public static boolean isCurrent(Context c,String id){return "current".equals(id);}
  public static void finish(Context c,String id,String s,String m){status=s;message=m;writes++;}}
 ''',
+'com/inhouse/services/updater/InstallActivity.java': '''package com.inhouse.services.updater; import android.content.Intent;
+public class InstallActivity { public static String id; public static Intent consent;
+ public static void requestConfirmation(String value, Intent intent) {id=value;consent=intent;} }
+''',
 'Probe.java': '''import android.content.*; import android.content.pm.*; import com.inhouse.services.updater.*;
 public class Probe {
  static void check(boolean value){if(!value)throw new AssertionError();}
  public static void main(String[] args){
   Context context=new Context(); InstallReceiver receiver=new InstallReceiver();
   Intent consent=new Intent(); Intent result=new Intent().putExtra("installId","current").putExtra("status",-1).putExtra(Intent.EXTRA_INTENT,consent);
-  receiver.onReceive(context,result);check(context.opened==consent);check((consent.flags&Intent.FLAG_ACTIVITY_NEW_TASK)!=0);check(InstallState.writes==0);
-  context.blocked=true;receiver.onReceive(context,result);check(InstallState.status.equals("error"));check(InstallState.message.contains("Download APK"));
-  context.blocked=false;result.extras.remove(Intent.EXTRA_INTENT);receiver.onReceive(context,result);check(InstallState.status.equals("error"));
+  context.blocked=true; // Starting an Activity from a receiver is disallowed.
+  receiver.onReceive(context,result);check(context.opened==null);check(InstallActivity.consent==consent);check(InstallActivity.id.equals("current"));check(InstallState.writes==0);
+  result.extras.remove(Intent.EXTRA_INTENT);receiver.onReceive(context,result);check(InstallState.status.equals("error"));
   for(int status=0;status<=7;status++){result.putExtra("status",status);receiver.onReceive(context,result);
    check(InstallState.status.equals(status==0?"installed":status==3?"cancelled":"error"));}
   int writes=InstallState.writes;result.putExtra("installId","old").putExtra("status",0);receiver.onReceive(context,result);check(InstallState.writes==writes);

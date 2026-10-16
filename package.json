@@ -1,6 +1,6 @@
 {
   "name": "inhouse-services-updater",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "private": true,
   "scripts": {
     "test": "node --test tests/*.test.cjs"

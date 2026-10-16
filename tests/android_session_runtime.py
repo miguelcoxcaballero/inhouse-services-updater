@@ -20,10 +20,12 @@ import android.widget.Button; import java.io.*;
 public class MainActivity extends Activity {
  public void onCreate(Bundle saved) { super.onCreate(saved); Button b=new Button(this); b.setText("Install test update");setContentView(b);
  b.setOnClickListener(v->{try{
-  try(InputStream in=getAssets().open("update.apk");OutputStream out=new FileOutputStream(new File(getFilesDir(),"update.apk"))){byte[] buf=new byte[65536];int n;while((n=in.read(buf))!=-1)out.write(buf,0,n);}
+  java.security.MessageDigest digest=java.security.MessageDigest.getInstance("SHA-256");
+  try(InputStream in=getAssets().open("update.apk");OutputStream out=new FileOutputStream(new File(getFilesDir(),"update.apk"))){byte[] buf=new byte[65536];int n;while((n=in.read(buf))!=-1){out.write(buf,0,n);digest.update(buf,0,n);}}
+  StringBuilder hash=new StringBuilder();for(byte value:digest.digest())hash.append(String.format(java.util.Locale.ROOT,"%02x",value&255));
   startActivity(new Intent(this,com.inhouse.services.updater.InstallActivity.class)
    .setData(Uri.parse("content://"+getPackageName()+".update-provider/base.apk"))
-   .putExtra("installId","runtime-consent").putExtra("versionCode",2L).putExtra("versionName","2"));
+   .putExtra("sha256",hash.toString()).putExtra("installId","runtime-consent").putExtra("versionCode",2L).putExtra("versionName","2"));
  }catch(Exception e){throw new RuntimeException(e);}}); }
 }''')
 (src/'Provider.java').write_text('''package com.inhouse.installtest;
@@ -68,10 +70,10 @@ def build(version,asset=None):
  return apk
 new=build(2);old=build(1,new)
 run('adb','install','-r',old)
-run('adb','shell','appops','set',PACKAGE,'REQUEST_INSTALL_PACKAGES','allow')
+run('adb','shell','appops','set',PACKAGE,'REQUEST_INSTALL_PACKAGES','deny')
 run('adb','logcat','-c')
 run('adb','shell','am','start','-W','-n',PACKAGE+'/.MainActivity')
-def tap(label,seconds=35):
+def wait_label(label,seconds=35,click=False):
  deadline=time.monotonic()+seconds
  while time.monotonic()<deadline:
   run('adb','shell','uiautomator','dump','/sdcard/session-ui.xml',stdout=subprocess.DEVNULL)
@@ -79,17 +81,29 @@ def tap(label,seconds=35):
   for node in ET.fromstring(xml).iter('node'):
    if node.get('text','').casefold() in [item.casefold() for item in label.split('|')]:
     x1,y1,x2,y2=map(int,re.findall(r'\d+',node.get('bounds')))
-    run('adb','shell','input','tap',(x1+x2)//2,(y1+y2)//2);return
+    if click: run('adb','shell','input','tap',(x1+x2)//2,(y1+y2)//2)
+    return
   time.sleep(1)
  raise AssertionError('Android did not show '+label)
+def tap(label,seconds=35):wait_label(label,seconds,True)
 try:
  tap('Install test update')
+ # Denied permission returns to an actionable screen, without closing the host.
+ wait_label('Allow from this source')
+ run('adb','shell','input','keyevent','KEYCODE_BACK')
+ tap('Try again')
+ # Grant in real Android Settings and continue automatically into consent.
+ tap('Allow from this source')
+ run('adb','shell','input','keyevent','KEYCODE_BACK')
+ tap('Cancel')
+ # A cancelled consent remains recoverable inside the app.
+ tap('Try again')
  tap('Install|Update')
  deadline=time.monotonic()+45
  while time.monotonic()<deadline:
   package=output('adb','shell','dumpsys','package',PACKAGE)
   if re.search(r'\bversionCode=2\b',package):
-   print('PASS: real Android consent upgraded the production session installer from version 1 to 2.');break
+   print('PASS: denied/granted permission, automatic resume, cancellation and retry; real Android consent upgraded the production session installer from version 1 to 2.');break
   time.sleep(1)
  else:raise AssertionError('PackageManager did not confirm version 2')
 finally:
