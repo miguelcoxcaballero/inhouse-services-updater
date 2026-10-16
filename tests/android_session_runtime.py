@@ -107,6 +107,10 @@ try:
   time.sleep(1)
  else:raise AssertionError('PackageManager did not confirm version 2')
 finally:
- (OUT/'logcat.txt').write_text(output('adb','logcat','-d'))
+ log=output('adb','logcat','-d')
+ (OUT/'logcat.txt').write_text(log)
+ print('Final UI:',(OUT/'screen.xml').read_text())
+ for line in log.splitlines():
+  if any(term in line for term in ('Inhouse', 'inhouse.installtest', 'PackageInstaller', 'SecurityException', 'Background activity')):print(line)
  (OUT/'package.txt').write_text(output('adb','shell','dumpsys','package',PACKAGE))
  with (OUT/'screen.png').open('wb') as file:run('adb','exec-out','screencap','-p',stdout=file)
