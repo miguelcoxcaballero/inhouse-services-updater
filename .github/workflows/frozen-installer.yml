@@ -1,0 +1,17 @@
+# FROZEN Android installer guard. Fails when any frozen file differs from tag
+# installer-known-good, the version verified on a real phone. Read
+# FROZEN_INSTALLER.md; never edit or delete this workflow to make it pass.
+name: Frozen installer
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  frozen-installer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - name: Compare the installer with installer-known-good
+        run: python3 -m unittest tests/test_frozen_installer.py -v

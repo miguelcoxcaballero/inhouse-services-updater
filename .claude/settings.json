@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "deny": [
+      "Edit(**/android/PhotosUpdateInstaller.kt)",
+      "Edit(**/android/UpdateFileProvider.java)",
+      "Edit(**/register_android.py)",
+      "Edit(**/FROZEN_INSTALLER.md)",
+      "Edit(**/test_frozen_installer.py)",
+      "Edit(**/.github/workflows/frozen-installer.yml)",
+      "Edit(**/.github/CODEOWNERS)",
+      "Edit(**/.claude/settings.json)",
+      "Edit(**/.claude/hooks/protect_frozen_installer.py)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/protect_frozen_installer.py\"",
+            "timeout": 10,
+            "statusMessage": "Checking the frozen installer"
+          }
+        ]
+      }
+    ]
+  }
+}

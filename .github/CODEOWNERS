@@ -1,0 +1,10 @@
+# FROZEN Android installer (read FROZEN_INSTALLER.md). With a branch rule that
+# requires code owner review, only the owner can approve changes to these files.
+/android/PhotosUpdateInstaller.kt @miguelcoxcaballero
+/android/UpdateFileProvider.java @miguelcoxcaballero
+/tools/register_android.py @miguelcoxcaballero
+/tools/verify.py @miguelcoxcaballero
+/FROZEN_INSTALLER.md @miguelcoxcaballero
+/tests/test_frozen_installer.py @miguelcoxcaballero
+/.github/ @miguelcoxcaballero
+/.claude/ @miguelcoxcaballero
