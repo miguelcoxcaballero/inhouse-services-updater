@@ -10,4 +10,6 @@ Las siguientes son las primeras integraciones del código común, de la revisió
 | inhouse-read | 1.1.11 | [Descargar](https://github.com/miguelcoxcaballero/inhouse-read/releases/download/android-v1.1.11/inhouse-read-release-v1.1.11.apk) |
 | Inhouse-Photos | 3.1.102 | [Descargar](https://github.com/miguelcoxcaballero/Inhouse-Photos/releases/download/v3.1.102-a/Inhouse-Photos.apk) |
 
-[Pruebas y límites](validation/2026-10-11.json). Los manifiestos de cada app permanecen en su propio repositorio; aquí se mantiene la implementación común. Para cambios futuros, lee `AGENTS.md` y sincroniza las cinco apps con `tools/sync.py`.
+[Pruebas y límites](validation/2026-10-11.json). Los manifiestos de cada app permanecen en su propio repositorio; aquí se mantiene la implementación común. Para cambios futuros, lee `AGENTS.md` y sincroniza las seis apps con `tools/sync.py`.
+
+Inhouse Learn (`inhouselearn`, paquete `com.inhouse.learn`) se añadió el 2026-10-20 como sexta app. Es un host nativo como Photos: `MainActivity` llama a `NativeUpdates` y el popup y los ajustes son `UpdateActivity`, con los recursos web en `android/app/src/main/assets/updates` y el proveedor `.update-provider` registrado con `UpdateFileProvider`. Su primera versión A es la 1.0.0; ver `android/README.md` en ese repositorio.

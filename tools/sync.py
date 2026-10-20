@@ -4,7 +4,7 @@
 Automatic application releases go to A + tiny changelog. B requires an explicit user request.
 A includes all A and B releases; B includes only B. The publisher mirrors each B into A
 and keeps the highest global versionCode as latest, without requiring a new client APK.
-Run this for ALL five consumers whenever updater code changes. Runtime changes require
+Run this for ALL consumers in APPS whenever updater code changes. Runtime changes require
 tested app builds published to A; publication-tool or documentation changes need source sync only.
 """
 import argparse, hashlib, json, shutil, subprocess
@@ -17,6 +17,7 @@ APPS = {
     'notes': ('inhousenotes', 'Inhouse Notes'),
     'photos': ('Inhouse-Photos', 'Inhouse Photos'),
     'read': ('inhouse-read', 'Inhouse Read'),
+    'learn': ('inhouselearn', 'Inhouse Learn'),
 }
 POLICY = '''# Inhouse services updater — mandatory shared updater policy
 
@@ -30,7 +31,7 @@ Every AI/developer working in this app must read this section even without openi
 - **A receives all A and B releases; B receives only B releases.** The highest global Android versionCode wins: a newer B supersedes an older A for A users, while an older B never displaces a newer A.
 - **B** (reviewed releases) requires the user's **explicit request**. Tests passing is not permission to publish or promote. B may promote an existing A release or publish a new verified APK directly; a previous A publication is not required.
 - Every release needs a tiny changelog: preferably 2–10 words, maximum 120 characters.
-- Never independently edit updater copies. Change the canonical repository first, test, commit, and sync the SAME revision into YouTube, Instagram, Notes, Photos and Read using its `tools/sync.py`.
+- Never independently edit updater copies. Change the canonical repository first, test, commit, and sync the SAME revision into YouTube, Instagram, Notes, Photos, Read and Learn using its `tools/sync.py`.
 - Commit `inhouse-updater.lock.json` and shared files together. Build checks must reject drift. App identity and host integration are the only permitted differences.
 - Updates are optional. Later snoozes automatic prompts for 14 days; manual updates remain available in settings. The popup and settings both expose A/B selection.
 - Keep APK package and signing key; increment Android versionCode globally across A/B. Switching channels never downgrades or deletes user data.
@@ -60,8 +61,11 @@ def sync(app, destination):
     copy('tests/browser.py', 'vendor/inhouse-services-updater/tests/browser.py')
     for document in ('AGENTS.md', 'README.md', 'FROZEN_INSTALLER.md', 'docs/PROTOCOL.md', 'docs/PROVENANCE.md'):
         copy(document, 'vendor/inhouse-services-updater/' + document)
-    if app in ('youtube', 'instagram', 'photos'):
-        assets = 'mobile/android/app/src/main/assets/updates' if app == 'photos' else 'app/assets/updates'
+    # Native hosts (NativeUpdates + UpdateActivity) read bundled web assets and config.json.
+    native_java = {'photos': 'mobile/android/app/src/main/java', 'learn': 'android/app/src/main/java'}
+    if app in ('youtube', 'instagram', 'photos', 'learn'):
+        assets = {'photos': 'mobile/android/app/src/main/assets/updates',
+                  'learn': 'android/app/src/main/assets/updates'}.get(app, 'app/assets/updates')
         for source in sorted((ROOT / 'web').glob('*')):
             copy(source.relative_to(ROOT).as_posix(), assets + '/' + source.name)
         config = {'appId': app, 'appName': name, 'repository': 'miguelcoxcaballero/' + slug}
@@ -75,9 +79,9 @@ def sync(app, destination):
     else:
         assets = 'src/vendor/inhouse-services-updater' if app == 'read' else 'shared/inhouse-services-updater'
         for file in ('updater.js', 'updater.css'): copy('web/' + file, assets + '/' + file)
-    if app == 'photos':
+    if app in native_java:
         for source in sorted((ROOT / 'android').glob('*')):
-            copy(source.relative_to(ROOT).as_posix(), 'mobile/android/app/src/main/java/com/inhouse/services/updater/' + source.name)
+            copy(source.relative_to(ROOT).as_posix(), native_java[app] + '/com/inhouse/services/updater/' + source.name)
     lock = {'repository': 'miguelcoxcaballero/inhouse-services-updater', 'revision': revision, 'version': '1.2.4', 'appId': app, 'files': copies}
     (dest / 'inhouse-updater.lock.json').write_text(json.dumps(lock, indent=2) + '\n')
     (dest / 'UPDATER.md').write_text(POLICY)
