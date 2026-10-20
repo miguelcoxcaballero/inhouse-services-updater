@@ -5,7 +5,8 @@ The Inhouse services updater's Android installer installed an update from
 inside the app on a real Samsung phone on 2026-10-20, after weeks of broken
 "improvements". Read FROZEN_INSTALLER.md. This hook blocks every file-tool
 write to the frozen files and every shell command that writes, moves or
-deletes them or touches tag installer-known-good. Exit code 2 blocks the tool
+deletes them or touches tag installer-known-good or branch
+frozen-installer. Exit code 2 blocks the tool
 call and shows the reason to the agent. Only the user can lift the freeze, by
 editing .claude/settings.json themselves.
 """
@@ -24,7 +25,7 @@ FROZEN = (
     '.claude/settings.json',
     '.claude/hooks/protect_frozen_installer.py',
 )
-TAG = 'installer-known-good'
+ANCHORS = ('installer-known-good', 'frozen-installer')  # tag and branch of the verified commit
 REASON = ('BLOCKED: {what} is part of the FROZEN Android installer, verified on a real phone. '
           'Do not change it, work around this hook or edit the guards. Read FROZEN_INSTALLER.md '
           'and, if the task really needs it, stop and ask the user.')
@@ -64,9 +65,10 @@ def main():
             block(path)
     elif tool == 'Bash':
         command = data.get('command', '')
-        if TAG in command and re.search(r'\bgit\s+(?:tag|push|update-ref|branch|replace)\b', command) \
-                and not re.search(r'\bgit\s+tag\s+(?:-l|--list)\b', command):
-            block('tag ' + TAG)
+        for anchor in ANCHORS:
+            if anchor in command and re.search(r'\bgit\s+(?:tag|push|update-ref|branch|replace)\b', command) \
+                    and not re.search(r'\bgit\s+(?:tag|branch)\s+(?:-l|--list|-a|-r|-v)\b', command):
+                block(anchor)
         named = frozen_in(command)
         if not named:
             return

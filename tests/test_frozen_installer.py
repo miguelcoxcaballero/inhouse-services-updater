@@ -1,10 +1,10 @@
-"""FROZEN Android installer: it must stay byte-identical to tag installer-known-good.
+"""FROZEN Android installer: it must stay byte-identical to the verified commit.
 
 The installer below installed an update from inside the app on a real Samsung
 phone on 2026-10-20 (Inhouse Notes 1.0.27 -> 1.0.28). Every earlier attempt to
 "improve" it broke in-app updates. Read FROZEN_INSTALLER.md. If this test fails,
-undo your change to the frozen files; do not edit this test, the tag or the
-hashes. Only the user, in their own words, can unfreeze the installer.
+undo your change to the frozen files; do not edit this test, the tag, the
+frozen-installer branch or the hashes. Only the user, in their own words, can unfreeze the installer.
 """
 import hashlib
 import subprocess
@@ -12,7 +12,9 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-TAG = 'installer-known-good'
+# The verified commit: tag installer-known-good, or branch frozen-installer (same
+# commit) where the tag cannot be pushed. Neither may ever move.
+ANCHORS = ('refs/tags/installer-known-good', 'refs/remotes/origin/frozen-installer', 'refs/heads/frozen-installer')
 FROZEN = (
     'android/PhotosUpdateInstaller.kt',
     'android/UpdateFileProvider.java',
@@ -33,14 +35,17 @@ def git(*args):
 
 class FrozenInstaller(unittest.TestCase):
     def test_frozen_files_match_the_verified_tag(self):
-        if git('rev-parse', '--verify', '--quiet', f'refs/tags/{TAG}^{{commit}}').returncode:
-            self.fail(f'Tag {TAG} is missing. Fetch it with "git fetch --tags"; never recreate or move it. {WHY}')
+        anchor = next((ref for ref in ANCHORS
+                       if not git('rev-parse', '--verify', '--quiet', ref + '^{commit}').returncode), None)
+        if anchor is None:
+            self.fail('Neither tag installer-known-good nor branch frozen-installer is available. Fetch them '
+                      '("git fetch origin --tags frozen-installer"); never recreate or move them. ' + WHY)
         for path in FROZEN:
             with self.subTest(path=path):
-                tagged = git('show', f'{TAG}:{path}')
-                self.assertEqual(tagged.returncode, 0, f'{path} is not in {TAG}. {WHY}')
+                tagged = git('show', f'{anchor}:{path}')
+                self.assertEqual(tagged.returncode, 0, f'{path} is not in {anchor}. {WHY}')
                 self.assertTrue((ROOT / path).is_file(), f'{path} was deleted. {WHY}')
-                self.assertEqual((ROOT / path).read_bytes(), tagged.stdout, f'{path} differs from {TAG}. {WHY}')
+                self.assertEqual((ROOT / path).read_bytes(), tagged.stdout, f'{path} differs from {anchor}. {WHY}')
 
     def test_installer_hands_the_apk_to_android_with_action_view(self):
         source = (ROOT / 'android/PhotosUpdateInstaller.kt').read_text()

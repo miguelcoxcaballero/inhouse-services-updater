@@ -1,5 +1,5 @@
 # FROZEN Android installer guard. Fails when any frozen file differs from tag
-# installer-known-good, the version verified on a real phone. Read
+# installer-known-good or branch frozen-installer, the version verified on a real phone. Read
 # FROZEN_INSTALLER.md; never edit or delete this workflow to make it pass.
 name: Frozen installer
 on: [push, pull_request, workflow_dispatch]
