@@ -50,6 +50,19 @@ class SyncTest(unittest.TestCase):
         subprocess.run([sys.executable, str(destination / 'vendor/inhouse-services-updater/verify.py'), str(destination)],
                        check=True, capture_output=True)
 
+    def test_paellas_is_a_native_host(self):
+        destination = self.synced('paellas')
+        assets = destination / 'android/app/src/main/assets/updates'
+        java = destination / 'android/app/src/main/java/com/inhouse/services/updater'
+        for name in ('index.html', 'updater.js', 'updater.css', 'host.js', 'host.css'):
+            self.assertEqual((assets / name).read_bytes(), (ROOT / 'web' / name).read_bytes())
+        for source in (ROOT / 'android').iterdir():
+            self.assertEqual((java / source.name).read_bytes(), source.read_bytes())
+        self.assertEqual(json.loads((assets / 'config.json').read_text()), {
+            'appId': 'paellas', 'appName': 'paellas.net', 'repository': 'miguelcoxcaballero/paellas'})
+        subprocess.run([sys.executable, str(destination / 'vendor/inhouse-services-updater/verify.py'), str(destination)],
+                       check=True, capture_output=True)
+
 
 if __name__ == '__main__':
     unittest.main()

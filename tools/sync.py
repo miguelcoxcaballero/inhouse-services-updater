@@ -18,6 +18,7 @@ APPS = {
     'photos': ('Inhouse-Photos', 'Inhouse Photos'),
     'read': ('inhouse-read', 'Inhouse Read'),
     'learn': ('inhouselearn', 'Inhouse Learn'),
+    'paellas': ('paellas', 'paellas.net'),
 }
 POLICY = '''# Inhouse services updater — mandatory shared updater policy
 
@@ -31,7 +32,7 @@ Every AI/developer working in this app must read this section even without openi
 - **A receives all A and B releases; B receives only B releases.** The highest global Android versionCode wins: a newer B supersedes an older A for A users, while an older B never displaces a newer A.
 - **B** (reviewed releases) requires the user's **explicit request**. Tests passing is not permission to publish or promote. B may promote an existing A release or publish a new verified APK directly; a previous A publication is not required.
 - Every release needs a tiny changelog: preferably 2–10 words, maximum 120 characters.
-- Never independently edit updater copies. Change the canonical repository first, test, commit, and sync the SAME revision into YouTube, Instagram, Notes, Photos, Read and Learn using its `tools/sync.py`.
+- Never independently edit updater copies. Change the canonical repository first, test, commit, and sync the SAME revision into YouTube, Instagram, Notes, Photos, Read, Learn and Paellas using its `tools/sync.py`.
 - Commit `inhouse-updater.lock.json` and shared files together. Build checks must reject drift. App identity and host integration are the only permitted differences.
 - Updates are optional. Later snoozes automatic prompts for 14 days; manual updates remain available in settings. The popup and settings both expose A/B selection.
 - Keep APK package and signing key; increment Android versionCode globally across A/B. Switching channels never downgrades or deletes user data.
@@ -62,10 +63,12 @@ def sync(app, destination):
     for document in ('AGENTS.md', 'README.md', 'FROZEN_INSTALLER.md', 'docs/PROTOCOL.md', 'docs/PROVENANCE.md'):
         copy(document, 'vendor/inhouse-services-updater/' + document)
     # Native hosts (NativeUpdates + UpdateActivity) read bundled web assets and config.json.
-    native_java = {'photos': 'mobile/android/app/src/main/java', 'learn': 'android/app/src/main/java'}
-    if app in ('youtube', 'instagram', 'photos', 'learn'):
+    native_java = {'photos': 'mobile/android/app/src/main/java', 'learn': 'android/app/src/main/java',
+                   'paellas': 'android/app/src/main/java'}
+    if app in ('youtube', 'instagram', 'photos', 'learn', 'paellas'):
         assets = {'photos': 'mobile/android/app/src/main/assets/updates',
-                  'learn': 'android/app/src/main/assets/updates'}.get(app, 'app/assets/updates')
+                  'learn': 'android/app/src/main/assets/updates',
+                  'paellas': 'android/app/src/main/assets/updates'}.get(app, 'app/assets/updates')
         for source in sorted((ROOT / 'web').glob('*')):
             copy(source.relative_to(ROOT).as_posix(), assets + '/' + source.name)
         config = {'appId': app, 'appName': name, 'repository': 'miguelcoxcaballero/' + slug}
