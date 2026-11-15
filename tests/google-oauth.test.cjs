@@ -103,3 +103,16 @@ test('an existing app never switches account during native discovery', async () 
   const client=env.create({androidClientId:'android',openAuthUrl:()=>assert.fail('unexpected login')});
   assert.equal((await client.request(false)).access_token,'account-a');
 });
+test('interactive recovery from a revoked grant clears the reconnect opt-out', async () => {
+  let url;
+  const env=setup({fetch:async (_url,options)=>{
+    const refresh=new URLSearchParams(options.body).get('grant_type')==='refresh_token';
+    return {ok:!refresh,json:async()=>refresh?{error:'invalid_grant'}:{access_token:'reconnected',refresh_token:'replacement',scope:'drive',expires_in:3600}};
+  }});
+  env.storage.setItem('inhouse-google-session-v1',JSON.stringify({access_token:'expired',refresh_token:'old',client_id:'android',scope:'drive',expiresAt:1}));
+  const client=env.create({androidClientId:'android',redirectUri:'example:/callback',openAuthUrl:value=>url=new URL(value)});
+  const request=client.request(true);await tick();
+  await client.handleCallback('code=new&state='+url.searchParams.get('state'));await request;
+  assert.equal(env.storage.getItem('inhouse-google-session-v1:signed-out'),null);
+  assert.equal((await client.request(false)).access_token,'reconnected');
+});

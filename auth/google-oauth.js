@@ -52,6 +52,7 @@
         refresh_token: data.refresh_token || previous?.refresh_token || '',
         client_id: previous?.client_id || config.androidClientId || config.clientId,
         email: data.email || previous?.email || config.hint?.() || '', updatedAt: Date.now() };
+      remove(key + ':signed-out');
       storage.setItem(key, JSON.stringify(session));
       if (config.refreshKey && session.refresh_token) storage.setItem(config.refreshKey, session.refresh_token);
       config.onToken?.(session);
