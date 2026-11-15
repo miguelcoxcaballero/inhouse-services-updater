@@ -51,7 +51,11 @@ certificate matches android/README.md (SHA-1 3dbeba8c6210b9003221dbdd0f459469d18
 Changing a pin requires verifying a real release's signing identity; never trust
 package names alone or register the updater's frozen provider as this provider.
 
-Run `node --test tests/google-oauth.test.cjs`. Build all consumer APKs and test on a
+Run `node --test tests/google-oauth.test.cjs`. With sibling Notes and Read checkouts,
+run `python tests/oauth_registration.py` to verify the actual generated shells.
+With Notes served at localhost:4173 and Paellas at localhost:4174 and Playwright
+installed in Notes, run `node tests/google-oauth.integration.cjs` for the mocked
+PKCE-to-cross-app-restore browser test (requires Chromium at /usr/bin/chromium). Build all consumer APKs and test on a
 device: install Notes, connect, install Read, restore without a picker; then install
 Paellas, grant missing permissions, restart all apps; test cancellation, local logout,
 revocation, offline startup, process recreation and unsigned/repackaged callers.
