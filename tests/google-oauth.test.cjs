@@ -72,3 +72,25 @@ test('temporary refresh failures preserve the grant; invalid_grant clears it', a
   await assert.rejects(client.request(false));assert.equal(client.session().refresh_token,'refresh');
   error='invalid_grant';await assert.rejects(client.request(false));assert.equal(client.session(),null);
 });
+test('concurrent first-install requests wait for discovery instead of opening Google', async () => {
+  let readRequest, opened=0;
+  const env=setup();const bridge={postMessage(raw){readRequest=JSON.parse(raw)}};
+  env.context.InhouseOAuthNative=bridge;
+  const client=env.create({androidClientId:'read',openAuthUrl:()=>opened++});
+  const first=client.request(false), second=client.request(true);
+  bridge.onmessage({data:JSON.stringify({id:readRequest.id,session:{access_token:'shared',scope:'drive',expiresAt:Date.now()+3600000,updatedAt:1}})});
+  assert.equal((await first).access_token,'shared');assert.equal((await second).access_token,'shared');assert.equal(opened,0);
+});
+test('a new account without a refresh token never borrows an old account refresh token', async () => {
+  const env=setup({fetch:()=>assert.fail('must not renew the wrong account')});
+  env.storage.setItem('legacy-refresh','old-account-refresh');
+  env.storage.setItem('inhouse-google-session-v1',JSON.stringify({access_token:'expired',expiresAt:1,scope:'drive',client_id:'different',email:'new@example.com'}));
+  const client=env.create({androidClientId:'android',refreshKey:'legacy-refresh',openAuthUrl:()=>{}});
+  await assert.rejects(client.request(false),/required/);
+});
+test('legacy Paellas routing prefix remains bound to fresh random state', async () => {
+  let url;
+  const env=setup();const client=env.create({statePrefix:'android.',redirectUri:'https://paellas.net',openAuthUrl:value=>url=new URL(value)});
+  const request=client.request(true);const rejected=assert.rejects(request,/cancelled/);await tick();
+  assert.match(url.searchParams.get('state'),/^android\.[A-Za-z0-9_-]{43}$/);client.cancel();await rejected;
+});

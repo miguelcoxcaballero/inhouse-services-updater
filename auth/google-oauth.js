@@ -16,7 +16,7 @@
     let generation = 0, pending = null, flight = null, exchange = null, signedOut = false;
     const read = name => { try { return JSON.parse(storage.getItem(name) || 'null'); } catch (_) { return null; } };
     const remove = name => storage.removeItem(name);
-    let nativeRestore = null;
+    let nativeRestore = null, nativeRestored = false;
     const nativeCalls = new Map();
     function nativeCall(method, session) {
       const bridge = root.InhouseOAuthNative;
@@ -122,7 +122,7 @@
     }
     function native(interactive, version) {
       const previous = read(key);
-      const refresh = previous?.refresh_token || (config.refreshKey && storage.getItem(config.refreshKey));
+      const refresh = previous ? previous.refresh_token : (config.refreshKey && storage.getItem(config.refreshKey));
       if (refresh && accepts(previous?.scope || config.scope)) {
         return tokenRequest({ client_id: previous?.client_id || config.androidClientId, grant_type: 'refresh_token', refresh_token: refresh },
           version, previous || { refresh_token: refresh, scope: config.scope }).catch(error => {
@@ -148,12 +148,14 @@
       }, TTL, version);
     }
     function request(interactive = false) {
-      if (root.InhouseOAuthNative && !nativeRestore && storage.getItem(key + ':signed-out') !== '1') {
-        const version = generation;
-        nativeRestore = nativeCall('read').then(session => {
-          check(version);
-          if (session && (!read(key) || session.updatedAt > read(key).updatedAt)) storage.setItem(key, JSON.stringify(session));
-        });
+      if (root.InhouseOAuthNative && !nativeRestored && storage.getItem(key + ':signed-out') !== '1') {
+        if (!nativeRestore) {
+          const version = generation;
+          nativeRestore = nativeCall('read').then(session => {
+            check(version);
+            if (session && (!read(key) || session.updatedAt > read(key).updatedAt)) storage.setItem(key, JSON.stringify(session));
+          }).finally(() => { nativeRestored = true; });
+        }
         return nativeRestore.then(() => request(interactive));
       }
       if (storage.getItem(key + ':signed-out') === '1') signedOut = true;
