@@ -82,7 +82,7 @@
         if (!response.ok) {
           // A temporary network/server failure must not destroy an offline grant.
           if (data.error === 'invalid_grant') {
-            remove(key); void nativeCall('clear'); if (config.refreshKey) remove(config.refreshKey);
+            remove(key); storage.setItem(key + ':signed-out', '1'); void nativeCall('clear'); if (config.refreshKey) remove(config.refreshKey);
           }
           const error = new Error('Google authorization failed');
           error.code = data.error; throw error;
@@ -153,7 +153,9 @@
           const version = generation;
           nativeRestore = nativeCall('read').then(session => {
             check(version);
-            if (session && (!read(key) || session.updatedAt > read(key).updatedAt)) storage.setItem(key, JSON.stringify(session));
+            // Never switch an existing app's account during a background refresh.
+            const ownsGrant = read(key) || (config.refreshKey && storage.getItem(config.refreshKey));
+            if (session && !ownsGrant) storage.setItem(key, JSON.stringify(session));
           }).finally(() => { nativeRestored = true; });
         }
         return nativeRestore.then(() => request(interactive));

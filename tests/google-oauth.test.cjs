@@ -94,3 +94,12 @@ test('legacy Paellas routing prefix remains bound to fresh random state', async 
   const request=client.request(true);const rejected=assert.rejects(request,/cancelled/);await tick();
   assert.match(url.searchParams.get('state'),/^android\.[A-Za-z0-9_-]{43}$/);client.cancel();await rejected;
 });
+test('an existing app never switches account during native discovery', async () => {
+  const env=setup();let bridge;
+  const own={access_token:'account-a',scope:'drive',expiresAt:Date.now()+3600000,updatedAt:1};
+  env.storage.setItem('inhouse-google-session-v1',JSON.stringify(own));
+  bridge={postMessage(raw){const request=JSON.parse(raw);queueMicrotask(()=>bridge.onmessage({data:JSON.stringify({id:request.id,session:{...own,access_token:'account-b',updatedAt:2}})}))}};
+  env.context.InhouseOAuthNative=bridge;
+  const client=env.create({androidClientId:'android',openAuthUrl:()=>assert.fail('unexpected login')});
+  assert.equal((await client.request(false)).access_token,'account-a');
+});

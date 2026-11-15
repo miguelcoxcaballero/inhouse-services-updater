@@ -22,7 +22,8 @@ There is no wildcard origin, general JavascriptInterface, public file or externa
 storage containing the shared grant. Read also checks its /inhouse-read/ path.
 
 A newly installed app discovers the most recently used account from installed,
-upgraded official apps. It keeps the originating OAuth client ID when renewing a
+upgraded official apps. An app with its own existing grant keeps that account;
+a background refresh never switches it to another app's newly selected account. It keeps the originating OAuth client ID when renewing a
 shared refresh token. It checks scopes before using any token; Paellas requests
 its additional Sheets/Forms/Apps Script permissions separately and uses the shared
 account's email as a Google login hint. Google can still require consent or account
