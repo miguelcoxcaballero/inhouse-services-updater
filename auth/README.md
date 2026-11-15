@@ -37,16 +37,17 @@ the new bridge retain their previous per-app authorization path.
 The browser uses the same module with Google Identity Services. Browser sessions
 remain origin-local: cross-domain token sharing is deliberately not implemented.
 Google may reuse its browser account, subject to its consent and cookie policies.
-No backend or new OAuth client is required. Paellas retains its registered implicit
-native callback until an Android OAuth client is provisioned; it can consume an
-existing shared refresh grant only if that grant covers all required permissions.
+No backend is required. Paellas uses its newly registered Android OAuth client and
+`com.inhouse.paellas:/oauth2redirect` with PKCE on new APKs. Older APKs retain their
+existing implicit callback, selected by the absence of the new native bridge.
 
 ## Provenance and verification
 
 Notes release android-v1.0.28 (manifest SHA-256 ac3e141b753b8eb17ed56627bfdbb0c577d626158c9817a60b251f833b89cec7)
 and Read android-v1.1.25 (manifest SHA-256 b7705e72b92dce041e09c3a241b33b636c349ef0fde23d36ff04c102a49b7abb)
 supply the pinned signing certificates, read from their APK v2 signing blocks.
-Paellas' permanent Inhouse certificate is documented in its android/README.md.
+Paellas android-v1.0.1 was also verified with apksigner: its permanent Inhouse
+certificate matches android/README.md (SHA-1 3dbeba8c6210b9003221dbdd0f459469d1896b76).
 Changing a pin requires verifying a real release's signing identity; never trust
 package names alone or register the updater's frozen provider as this provider.
 

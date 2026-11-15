@@ -14,7 +14,7 @@ def register(project, repository, app_id):
         shutil.copyfile(shared / name, target / name)
     ns = 'http://schemas.android.com/apk/res/android'; ET.register_namespace('android', ns)
     attr = lambda key: '{' + ns + '}' + key
-    manifest = app / 'src/main/AndroidManifest.xml'; tree = ET.parse(manifest); root = tree.getroot()
+    manifest = app / 'src/main/AndroidManifest.xml'; tree = ET.parse(manifest, parser=ET.XMLParser(target=ET.TreeBuilder(insert_comments=True))); root = tree.getroot()
     queries = root.find('queries')
     if queries is None: queries = ET.SubElement(root, 'queries')
     for package in PACKAGES:
@@ -26,7 +26,9 @@ def register(project, repository, app_id):
         ET.SubElement(application, 'provider', {attr('name'): provider,
             attr('authorities'): '${applicationId}.inhouse-google-session', attr('exported'): 'true',
             attr('grantUriPermissions'): 'false'})
+    ET.indent(tree, space='    ')
     tree.write(manifest, encoding='utf-8', xml_declaration=True)
+    manifest.write_text(manifest.read_text() + '\n')
     gradle = app / 'build.gradle'
     if gradle.exists():
         content = gradle.read_text()
