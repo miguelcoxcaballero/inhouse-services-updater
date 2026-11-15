@@ -132,7 +132,7 @@
       }
       if (!interactive) return Promise.reject(new Error('Google sign-in is required'));
       return waitForCallback(async () => {
-        const verifier = random(), state = random();
+        const verifier = random(), state = (config.statePrefix || '') + random();
         const challenge = encode(new Uint8Array(await root.crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier))));
         check(version);
         storage.setItem(transactionKey, JSON.stringify({ verifier, state, createdAt: Date.now() }));
