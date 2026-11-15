@@ -18,6 +18,7 @@ APPS = {
     'photos': ('Inhouse-Photos', 'Inhouse Photos'),
     'read': ('inhouse-read', 'Inhouse Read'),
     'learn': ('inhouselearn', 'Inhouse Learn'),
+    'paellas': ('paellas', 'Paellas'),
 }
 POLICY = '''# Inhouse services updater — mandatory shared updater policy
 
@@ -94,5 +95,34 @@ def sync(app, destination):
     agents.write_text(current + '\n\n' + POLICY)
     print(f'Synced {app} at {revision}: {len(copies)} identical files')
 
+def sync_auth(app, destination):
+    """Independent OAuth lock: adding login must not roll back an app's updater."""
+    dest = Path(destination).resolve()
+    subprocess.run(['git', 'diff', '--exit-code', 'HEAD', '--', 'auth'], cwd=ROOT, check=True)
+    revision = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
+    files = {}
+    for source in sorted((ROOT / 'auth').glob('*')):
+        if not source.is_file(): continue
+        target = 'vendor/inhouse-services-updater/auth/' + source.name
+        path = dest / target
+        path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(source, path)
+        files[target] = {'source': 'auth/' + source.name, 'sha256': digest(path)}
+    if app == 'paellas':
+        import runpy
+        runpy.run_path(str(ROOT / 'auth/register_android.py'))['register'](dest, dest, app)
+        for name in ('GoogleSessionProvider.java', 'GoogleSessionBridge.java'):
+            target = 'android/app/src/main/java/com/inhouse/services/oauth/' + name
+            files[target] = {'source': 'auth/' + name, 'sha256': digest(dest / target)}
+    (dest / 'inhouse-oauth.lock.json').write_text(json.dumps({
+        'repository': 'miguelcoxcaballero/inhouse-services-updater',
+        'revision': revision, 'appId': app, 'files': files
+    }, indent=2) + '\n')
+    print(f'Synced OAuth for {app} at {revision}')
+
 if __name__ == '__main__':
-    p=argparse.ArgumentParser(description=__doc__);p.add_argument('app',choices=APPS);p.add_argument('destination',type=Path);a=p.parse_args();sync(a.app,a.destination)
+    p=argparse.ArgumentParser(description=__doc__)
+    p.add_argument('app',choices=APPS); p.add_argument('destination',type=Path)
+    p.add_argument('--auth-only', action='store_true', help='Sync the independently locked Google login module')
+    a=p.parse_args()
+    (sync_auth if a.auth_only else sync)(a.app,a.destination)
