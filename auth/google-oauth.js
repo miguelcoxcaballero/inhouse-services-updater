@@ -207,7 +207,7 @@
       const session = read(key);
       if (session) { session.expiresAt = 0; storage.setItem(key, JSON.stringify(session)); }
     }
-    return { request, handleCallback, cancel, signOut, invalidate, session: () => read(key) };
+    return { request, handleCallback, cancel, signOut, invalidate, hasPendingRequest: () => !!pending, session: () => read(key) };
   }
   root.InhouseGoogleOAuth = Object.freeze({ create });
   if (typeof module !== 'undefined') module.exports = root.InhouseGoogleOAuth;
