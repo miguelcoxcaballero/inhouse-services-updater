@@ -35,3 +35,10 @@ La inclusión de B en A se hace al publicar los catálogos, por lo que también 
 [Contrato y publicación](docs/PROTOCOL.md) · [Procedencia](docs/PROVENANCE.md) · [Instrucciones para IA](AGENTS.md)
 
 - **B is the default update channel.** A requires an English development warning, explicit acknowledgement and slide confirmation. Legacy implicit A preferences migrate to B; choosing B clears A consent. This does not authorize publishing or promoting a B release.
+
+## Google OAuth compartido
+
+Notes, Read y Paellas usan también el [módulo de login común](auth/README.md),
+extraído de Notes. Las APK nuevas comparten la sesión entre paquetes oficiales
+verificados por firma; cada app solicita sus permisos de Google. El módulo se
+sincroniza con `tools/sync.py --auth-only` y un lock independiente del instalador.

@@ -21,3 +21,11 @@ Mandatory guidance for every AI and developer. This repository is the canonical 
 Read `README.md`, `docs/PROTOCOL.md` and `docs/PROVENANCE.md` before changing the updater.
 
 - **B is the default update channel.** A requires an English development warning, explicit acknowledgement and slide confirmation. Legacy implicit A preferences migrate to B; choosing B clears A consent. This does not authorize publishing or promoting a B release.
+
+## Google OAuth
+
+`auth/` is the canonical login for Notes, Read and Paellas. Read `auth/README.md`.
+Test and commit here, then sync those three consumers using `tools/sync.py --auth-only`.
+OAuth has its own `inhouse-oauth.lock.json`; do not replace unrelated updater locks
+or modify the frozen installer when working on login. Other updater consumers do
+not use this optional module. Verify OAuth hashes before building consumer APKs.
