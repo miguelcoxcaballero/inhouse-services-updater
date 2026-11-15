@@ -12,7 +12,7 @@
   function create(config) {
     const storage = config.storage || root.localStorage;
     const key = config.sessionKey || 'inhouse-google-session-v1';
-    const transactionKey = key + ':transaction';
+    const transactionKey = config.transactionKey || key + ':transaction';
     let generation = 0, pending = null, flight = null, exchange = null, signedOut = false;
     const read = name => { try { return JSON.parse(storage.getItem(name) || 'null'); } catch (_) { return null; } };
     const remove = name => storage.removeItem(name);
@@ -174,9 +174,10 @@
     async function handleCallback(payload) {
       if (exchange) return exchange;
       const transaction = read(transactionKey);
+      if (transaction && !transaction.verifier && config.verifierKey) transaction.verifier = storage.getItem(config.verifierKey);
       const params = new URLSearchParams(String(payload || '').replace(/^[?#]/, ''));
       if (!transaction || params.get('state') !== transaction.state) return false;
-      remove(transactionKey); // Consume once, including denial and expired callbacks.
+      remove(transactionKey); if (config.verifierKey) remove(config.verifierKey); // Consume once, including denial and expired callbacks.
       const version = generation;
       const task = (async () => {
         if (Date.now() - transaction.createdAt > TTL || transaction.createdAt > Date.now()) throw new Error('Google sign-in expired');
@@ -200,7 +201,11 @@
       cancel(); signedOut = true; storage.setItem(key + ':signed-out', '1'); void nativeCall('clear'); remove(key); if (config.refreshKey) remove(config.refreshKey);
       // Local sign-out must not revoke the Google grant used by the other Inhouse apps.
     }
-    return { request, handleCallback, cancel, signOut, session: () => read(key) };
+    function invalidate() {
+      const session = read(key);
+      if (session) { session.expiresAt = 0; storage.setItem(key, JSON.stringify(session)); }
+    }
+    return { request, handleCallback, cancel, signOut, invalidate, session: () => read(key) };
   }
   root.InhouseGoogleOAuth = Object.freeze({ create });
   if (typeof module !== 'undefined') module.exports = root.InhouseGoogleOAuth;
